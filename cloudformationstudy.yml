@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: cloudformation study
+
+#リソース
+Resources:
+  privatesubnet1:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: ap-northeast-1a
+      CidrBlock: 172.31.48.0/20
+      MapPublicIpOnLaunch: true
+      Tags:
+          - Key: Name
+            Value: privatesubnet1
+      VpcId: #vpcid入力
+
+  privatesubnet2:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: ap-northeast-1c
+      CidrBlock: 172.31.64.0/20
+      MapPublicIpOnLaunch: true
+      Tags:
+          - Key: Name
+            Value: privatesubnet2
+      VpcId: #vpcid入力
+
+  privateroutetable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: privateroutetable
+      VpcId: #vpcid入力
+  
+  routetableattach1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: !Ref privateroutetable
+      SubnetId: !Ref privatesubnet1
+
+  routetableattach2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: !Ref privateroutetable
+      SubnetId: !Ref privatesubnet2
