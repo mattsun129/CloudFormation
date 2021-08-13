@@ -93,3 +93,26 @@ Resources:
           ToPort: 3306
           SourceSecurityGroupId: !Ref ec2securitygroup
       VpcId: #vpcid入力
+
+  ec2instance: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      BlockDeviceMappings: 
+        - DeviceName: #ルートデバイス名入力
+          Ebs: 
+            DeleteOnTermination: true
+            VolumeSize: 16
+            VolumeType: gp2
+      ImageId: #イメージID入力
+      InstanceType: #インスタンスタイプ入力
+      KeyName: #キーペア入力
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: "0"
+          GroupSet: 
+            - !Ref ec2securitygroup
+          SubnetId: #サブネットID入力
+      Tags: 
+        - Key: Name
+          Value: ec2instance
