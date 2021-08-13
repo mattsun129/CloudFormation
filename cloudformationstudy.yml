@@ -45,3 +45,74 @@ Resources:
     Properties: 
       RouteTableId: !Ref privateroutetable
       SubnetId: !Ref privatesubnet2
+
+  ec2securitygroup: 
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: ec2-securitygroup
+      SecurityGroupEgress: 
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: ::/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIpv6: ::/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: #自分のIPアドレス入力
+      VpcId: #vpcid入力
+
+  rdssecuritygroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: rds-securitygroup
+      SecurityGroupEgress: 
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref ec2securitygroup
+      VpcId: #vpcid入力
+
+  ec2instance: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      BlockDeviceMappings: 
+        - DeviceName: #ルートデバイス名入力
+          Ebs: 
+            DeleteOnTermination: true
+            VolumeSize: 16
+            VolumeType: gp2
+      ImageId: #イメージID入力
+      InstanceType: #インスタンスタイプ入力
+      KeyName: #キーペア入力
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: "0"
+          GroupSet: 
+            - !Ref ec2securitygroup
+          SubnetId: #サブネットID入力
+      Tags: 
+        - Key: Name
+          Value: ec2instance
