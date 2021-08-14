@@ -117,7 +117,7 @@ Resources:
         - Key: Name
           Value: ec2instance
 
-    rdssubnetgroup: 
+  rdssubnetgroup: 
     Type: AWS::RDS::DBSubnetGroup
     Properties: 
       DBSubnetGroupDescription: rdssubnetgroup
@@ -129,7 +129,7 @@ Resources:
         - Key: Name
           Value: rdssubnetgroup
 
-    rdsinstance:  
+  rdsinstance:  
     Type: AWS::RDS::DBInstance
     Properties: 
       AllocatedStorage: #ストレージ量入力
