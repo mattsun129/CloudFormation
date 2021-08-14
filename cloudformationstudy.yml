@@ -116,3 +116,33 @@ Resources:
       Tags: 
         - Key: Name
           Value: ec2instance
+
+    rdssubnetgroup: 
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: rdssubnetgroup
+      SubnetIds:  
+        - !Ref privatesubnet1
+        - !Ref privatesubnet2
+      DBSubnetGroupName: #サブネットグループ名入力
+      Tags: 
+        - Key: Name
+          Value: rdssubnetgroup
+
+    rdsinstance:  
+    Type: AWS::RDS::DBInstance
+    Properties: 
+      AllocatedStorage: #ストレージ量入力
+      DBInstanceClass: #インスタンスクラス入力
+      DBSubnetGroupName: 
+        !Ref rdssubnetgroup
+      Engine: mysql
+      EngineVersion: "5.7.34"
+      MasterUsername: #DBユーザ名入力
+      MasterUserPassword: #DBパスワード入力
+      StorageType: gp2
+      Tags:
+        - Key: Name
+          Value: rdsinstance
+      VPCSecurityGroups: 
+        - !Ref rdssecuritygroup
