@@ -16,6 +16,29 @@ Parameters:
     Type: String
     Description: Enter privatesubnet2 CidrBlock
 
+  myip:
+    Type: String
+    Description: Enter myip
+
+  imageid:
+    Type: AWS::EC2::Image::Id
+    Description: Enter imageid
+
+  rootdevicename:
+    Type: String
+    Description: Enter rootdevicename
+
+  keyname: 
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Enter keyname
+
+  rdspassword: 
+    Type: String
+    Description: Enter rds password
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+
 
 
 #リソース
@@ -91,8 +114,8 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: #自分のIPアドレス入力
-      VpcId: #vpcid入力
+          CidrIp: !Ref myip
+      VpcId: !Ref vpcid
 
   rdssecuritygroup:
     Type: AWS::EC2::SecurityGroup
@@ -108,20 +131,20 @@ Resources:
           FromPort: 3306
           ToPort: 3306
           SourceSecurityGroupId: !Ref ec2securitygroup
-      VpcId: #vpcid入力
+      VpcId: !Ref vpcid
 
   ec2instance: 
     Type: AWS::EC2::Instance
     Properties: 
       BlockDeviceMappings: 
-        - DeviceName: #ルートデバイス名入力
+        - DeviceName: !Ref rootdevicename
           Ebs: 
             DeleteOnTermination: true
             VolumeSize: 16
             VolumeType: gp2
-      ImageId: #イメージID入力
+      ImageId: !Ref imageid
       InstanceType: #インスタンスタイプ入力
-      KeyName: #キーペア入力
+      KeyName: !Ref keyname
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
           DeleteOnTermination: true
@@ -155,7 +178,7 @@ Resources:
       Engine: mysql
       EngineVersion: "5.7.34"
       MasterUsername: #DBユーザ名入力
-      MasterUserPassword: #DBパスワード入力
+      MasterUserPassword: !Ref rdspassword
       StorageType: gp2
       Tags:
         - Key: Name
