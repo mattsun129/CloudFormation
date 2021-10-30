@@ -20,6 +20,10 @@ Parameters:
     Type: String
     Description: Enter RDS subnet groupname
 
+  rdsdbname:
+    Type: String
+    Description: Enter RDS DBname
+
   rdsusername:
     Type: String
     Description: Enter RDS username
@@ -80,6 +84,7 @@ Resources:
       DBInstanceClass: db.t2.micro
       DBSubnetGroupName: 
         !Ref rdssubnetgroup
+      DBName: !Ref rdsdbname
       Engine: mysql
       EngineVersion: "5.7.34"
       MasterUsername: !Ref rdsusername
