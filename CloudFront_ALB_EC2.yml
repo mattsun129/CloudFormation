@@ -1,0 +1,252 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: CloudFront ALB EC2
+
+Parameters:
+# ------------------------------------------------------------#
+# Parameters
+# ------------------------------------------------------------# 
+  VolumeSize:
+    Default: 8
+    Type: Number
+
+  Ec21InstanceType:
+    Default: t2.micro
+    Type: String
+
+  Vpcid:
+    Type: AWS::EC2::VPC::Id
+    Description: Enter VPC ID
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Enter Subnet ID
+  
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Enter Subnet ID
+
+Resources:
+# ------------------------------------------------------------#
+# IAM
+# ------------------------------------------------------------# 
+  Ec2SsmRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - ec2.amazonaws.com
+            Action: 
+              - 'sts:AssumeRole'
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      RoleName: EC2SsmRole
+
+  Ec2IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: Ec2InstanceProfile
+      Roles: 
+        - !Ref Ec2SsmRole
+
+# ------------------------------------------------------------#
+# Security Group
+# ------------------------------------------------------------# 
+  AlbSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: for ALB
+      GroupName: alb-sg
+      SecurityGroupEgress: 
+        - CidrIp: 0.0.0.0/0
+          FromPort: -1
+          IpProtocol: -1
+          ToPort: -1
+      SecurityGroupIngress: 
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+      Tags: 
+        - Key: Name
+          Value: alb-sg
+      VpcId: !Ref Vpcid
+
+  Ec2Sg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: for EC2
+      GroupName: ec2-sg
+      SecurityGroupEgress: 
+        - CidrIp: 0.0.0.0/0
+          FromPort: -1
+          IpProtocol: -1
+          ToPort: -1
+      SecurityGroupIngress: 
+        - FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+          SourceSecurityGroupId: !Ref AlbSg
+      Tags: 
+        - Key: Name
+          Value: ec2-sg
+      VpcId: !Ref Vpcid
+
+# ------------------------------------------------------------#
+# EC2
+# ------------------------------------------------------------# 
+  Ec2:
+    Type: AWS::EC2::Instance
+    Properties:
+      BlockDeviceMappings: 
+        - DeviceName: /dev/xvda
+          Ebs:
+            DeleteOnTermination: true
+            Encrypted: true
+            Iops: 3000
+            VolumeSize: !Ref VolumeSize
+            VolumeType: gp3
+      IamInstanceProfile: !Ref Ec2IamInstanceProfile
+      ImageId: ami-0f36dcfcc94112ea1
+      InstanceType: !Ref Ec21InstanceType
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: 0
+          GroupSet: 
+            - !Ref Ec2Sg
+          SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: ec2
+      UserData: !Base64 |
+        #!/bin/bash
+        yum update -y
+        yum upgrade -y
+        yum install httpd -y
+        systemctl enable httpd
+        systemctl start httpd
+        touch /var/www/html/index.html
+        echo "CloudFront -> ALB -> EC2" > /var/www/html/index.html
+
+# ------------------------------------------------------------#
+# ALB
+# ------------------------------------------------------------# 
+  Alb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Name: alb
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref AlbSg
+      Subnets: 
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags: 
+        - Key: Name
+          Value: alb
+      Type: application
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckPort: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      IpAddressType: ipv4
+      Matcher:
+        HttpCode: 200
+      Name: targetgroup
+      Port: 80
+      Protocol: HTTP
+      ProtocolVersion: HTTP1
+      Tags: 
+        - Key: Name
+          Value: targetgroup
+      Targets: 
+        - Id: !Ref Ec2
+          Port: 80
+      TargetType: instance
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref Vpcid
+
+  AlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - FixedResponseConfig:
+            ContentType: text/plain
+            MessageBody: Access denied
+            StatusCode: 403
+          Type: fixed-response
+      LoadBalancerArn: !Ref Alb
+      Port: 80
+      Protocol: HTTP
+
+  AlbListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties: 
+      Actions: 
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      Conditions: 
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: Custom-Header
+            Values: 
+              - kobayashi-riku0226
+      ListenerArn: !Ref AlbListener
+      Priority: 1
+
+# ------------------------------------------------------------#
+# CloudFront
+# ------------------------------------------------------------# 
+  CloudFront:
+    Type: AWS::CloudFront::Distribution
+    Properties: 
+      DistributionConfig:
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          TargetOriginId: Alb
+          ViewerProtocolPolicy: allow-all
+        Enabled: True
+        HttpVersion: http1.1
+        Origins: 
+          - CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+            DomainName: !GetAtt Alb.DNSName
+            Id: Alb
+            OriginCustomHeaders: 
+            - HeaderName: Custom-Header
+              HeaderValue: kobayashi-riku0226
+        PriceClass: PriceClass_200
+
+Outputs:
+# ------------------------------------------------------------#
+# Outputs
+# ------------------------------------------------------------# 
+  CloudFrontDomain:
+    Value: !GetAtt CloudFront.DomainName
+    Export: 
+      Name: CloudFrontDomain
+  
+  ALBDomain:
+    Value: !GetAtt Alb.DNSName
+    Export: 
+      Name: AlbDNSName
