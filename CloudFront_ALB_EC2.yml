@@ -67,7 +67,7 @@ Resources:
           IpProtocol: -1
           ToPort: -1
       SecurityGroupIngress: 
-        - CidrIp: 0.0.0.0/0
+        - SourcePrefixListId: pl-58a04531
           FromPort: 80
           IpProtocol: tcp
           ToPort: 80
@@ -183,29 +183,11 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
-        - FixedResponseConfig:
-            ContentType: text/plain
-            MessageBody: Access denied
-            StatusCode: 403
-          Type: fixed-response
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
       LoadBalancerArn: !Ref Alb
       Port: 80
       Protocol: HTTP
-
-  AlbListenerRule:
-    Type: AWS::ElasticLoadBalancingV2::ListenerRule
-    Properties: 
-      Actions: 
-        - TargetGroupArn: !Ref TargetGroup
-          Type: forward
-      Conditions: 
-        - Field: http-header
-          HttpHeaderConfig:
-            HttpHeaderName: Custom-Header
-            Values: 
-              - kobayashi-riku0226
-      ListenerArn: !Ref AlbListener
-      Priority: 1
 
 # ------------------------------------------------------------#
 # CloudFront
@@ -232,9 +214,6 @@ Resources:
               OriginProtocolPolicy: http-only
             DomainName: !GetAtt Alb.DNSName
             Id: Alb
-            OriginCustomHeaders: 
-            - HeaderName: Custom-Header
-              HeaderValue: kobayashi-riku0226
         PriceClass: PriceClass_200
 
 Outputs:
