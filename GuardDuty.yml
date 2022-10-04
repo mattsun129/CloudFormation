@@ -109,7 +109,7 @@ Resources:
               'Finding_ID': '$.detail.id'
               'Finding_Type': '$.detail.type'
               'region': '$.region'
-              'time': '$.time'
+              'time': '$.detail.createdAt'
               'Finding_description': '$.detail.description'
             InputTemplate: |
               "AWSアカウント：<Account_ID> で重要度：<severity> のイベントが検出されました。"
