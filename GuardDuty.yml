@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: GuardDuty Stack
+
+Parameters:
+# ------------------------------------------------------------#
+# Parameters
+# ------------------------------------------------------------# 
+  MailAddress:
+    Type: String
+
+Resources:
+# ------------------------------------------------------------#
+# SNS
+# ------------------------------------------------------------# 
+  SnsTopic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      Subscription:
+        - Endpoint: !Ref MailAddress
+          Protocol: email
+      TopicName: sns-guardduty
+
+  SnsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties: 
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: __default_policy_ID
+        Statement:
+          - Sid: __default_statement_ID
+            Effect: Allow
+            Principal: 
+              AWS: '*'
+            Action: 
+              - 'SNS:GetTopicAttributes'
+              - 'SNS:SetTopicAttributes'
+              - 'SNS:AddPermission'
+              - 'SNS:RemovePermission'
+              - 'SNS:DeleteTopic'
+              - 'SNS:Subscribe'
+              - 'SNS:ListSubscriptionsByTopic'
+              - 'SNS:Publish'
+            Resource: !Ref SnsTopic
+            Condition: 
+              StringEquals: 
+                'AWS:SourceOwner': !Sub ${AWS::AccountId}
+          - Sid: AWSEvents_guardduty
+            Effect: Allow
+            Principal: 
+              Service: events.amazonaws.com
+            Action: 'sns:Publish'
+            Resource: !Ref SnsTopic
+      Topics:
+        - !Ref SnsTopic
+
+# ------------------------------------------------------------#
+# GuardDuty
+# ------------------------------------------------------------# 
+  GuardDuty:
+    Type: AWS::GuardDuty::Detector
+    Properties: 
+      Enable: true
+
+# ------------------------------------------------------------#
+# EventBridge
+# ------------------------------------------------------------# 
+  EventBridge:
+    Type: AWS::Events::Rule
+    Properties: 
+      EventPattern: 
+        source: 
+          - aws.guardduty
+        detail-type: 
+          - 'GuardDuty Finding'
+        detail: 
+          severity:
+            - 7
+            - 7.0
+            - 7.1
+            - 7.2
+            - 7.3
+            - 7.4
+            - 7.5
+            - 7.6
+            - 7.7
+            - 7.8
+            - 7.9
+            - 8
+            - 8.0
+            - 8.1
+            - 8.2
+            - 8.3
+            - 8.4
+            - 8.5
+            - 8.6
+            - 8.7
+            - 8.8
+            - 8.9
+      Name: guardduty-event
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SnsTopic
+          Id: guardduty-event
+          InputTransformer: 
+            InputPathsMap: 
+              'severity': '$.detail.severity'
+              'Account_ID': '$.detail.accountId'
+              'Finding_ID': '$.detail.id'
+              'Finding_Type': '$.detail.type'
+              'region': '$.region'
+              'time': '$.time'
+              'Finding_description': '$.detail.description'
+            InputTemplate: |
+              "AWSアカウント：<Account_ID> で重要度：<severity> のイベントが検出されました。"
+              "検出時間：<time>"
+              "検出タイプ：<Finding_Type>"
+              "リージョン：<region>"
+              "検出タイプ説明：<Finding_description>."
+              "マネジメントコンソールから詳細をご確認ください。https://console.aws.amazon.com/guardduty/home?region=<region>#/findings?search=id=<Finding_ID>"
