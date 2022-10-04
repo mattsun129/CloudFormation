@@ -26,8 +26,10 @@ Resources:
     Properties: 
       PolicyDocument:
         Version: '2012-10-17'
+        Id: __default_policy_ID
         Statement:
-          - Effect: Allow
+          - Sid: __default_statement_ID
+            Effect: Allow
             Principal: 
               AWS: '*'
             Action: 
@@ -43,7 +45,8 @@ Resources:
             Condition: 
               StringEquals: 
                 'AWS:SourceOwner': !Sub ${AWS::AccountId}
-          - Effect: Allow
+          - Sid: AWSEvents_guardduty
+            Effect: Allow
             Principal: 
               Service: events.amazonaws.com
             Action: 'sns:Publish'
